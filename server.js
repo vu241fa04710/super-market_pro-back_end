@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
 const path = require("path");
 const connectDB = require("./config/db");
 
@@ -26,11 +27,18 @@ app.use("/api/sales", saleRoutes);
 
 app.get("/api/health", (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
-// ---- Static frontend ----
-app.use(express.static(path.join(__dirname, "public")));
+// ---- Static frontend (optional for separate frontend deployments) ----
+const publicDir = path.join(__dirname, "public");
+const hasFrontend = fs.existsSync(path.join(publicDir, "index.html"));
+
+if (hasFrontend) {
+  app.use(express.static(publicDir));
+}
+
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  if (hasFrontend) return res.sendFile(path.join(publicDir, "index.html"));
+  res.status(404).json({ error: "Frontend is deployed separately. Use the frontend site URL." });
 });
 
 // ---- Fallback error handler (keeps errors JSON, never a blank crash page) ----
